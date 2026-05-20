@@ -17,5 +17,5 @@ export class CreateRoomDto {
 
   @IsArray()
   @IsNotEmpty({ message: 'Must provide member to create a room.' })
-  userIds: string[]
+  memberIds: string[]
 }
