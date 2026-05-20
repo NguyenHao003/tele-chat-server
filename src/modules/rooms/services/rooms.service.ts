@@ -26,16 +26,15 @@ export class RoomsService {
         )
       }
 
-      const exsistingRoom = await this.roomRepository
+      const existingRoom = await this.roomRepository
         .createQueryBuilder('room')
         .innerJoin('room.members', 'm1')
         .innerJoin('room.members', 'm2')
         .where('room.type =:type', { type: RoomType.DIRECT })
-        .andWhere('m1.userId =:user1', { user1: allMemberIds[0] })
-        .andWhere('m2.userId =:user2', { user2: allMemberIds[1] })
+        .where('room.type = :type', { type: RoomType.DIRECT })
         .getOne()
 
-      if (exsistingRoom) {
+      if (existingRoom) {
         throw new BadRequestException('Direct chat already exists.')
       }
     }
@@ -44,23 +43,53 @@ export class RoomsService {
       throw new BadRequestException('Group chat must have a name.')
     }
 
-    const newRoom = this.roomRepository.create({ type, name })
-    const savedRoom = await this.roomRepository.save(newRoom)
+    return await this.roomRepository.manager.transaction(async (manager) => {
+      const newRoom = this.roomRepository.create({ type, name })
+      const savedRoom = await this.roomRepository.save(newRoom)
 
-    const membersData = allMemberIds.map((memberId) => {
-      return this.memberRepository.create({
-        room: savedRoom,
-        user: { id: memberId }
+      const membersData = allMemberIds.map((memberId) => {
+        return this.memberRepository.create({
+          room: savedRoom,
+          user: { id: memberId }
+        })
       })
+
+      await this.memberRepository.save(membersData)
+      return savedRoom
     })
-
-    await this.memberRepository.save(membersData)
-
-    return savedRoom
   }
 
-  findAll() {
-    return `This action returns all rooms`
+  async findAll(userId: string) {
+    return await this.roomRepository
+      .createQueryBuilder('room')
+      .innerJoin(
+        'room.members',
+        'currentMember',
+        'currentMember.userId = :userId',
+        { userId }
+      )
+      .leftJoinAndSelect('room.members', 'member')
+      .leftJoinAndSelect('member.user', 'user')
+      // .leftJoinAndSelect(
+      //   'room.messages',
+      //   'lastMessage',
+      //   'lastMessage.id = (SELECT m.id FROM message m WHERE m.roomId = room.id ORDER BY m.createdAt DESC LIMIT 1)'
+      // )
+      .select([
+        'room.id',
+        'room.name',
+        'room.type',
+        'room.createdAt',
+        'member.id',
+        'user.id',
+        'user.username',
+        'user.avatar'
+        // 'lastMessage.id',
+        // 'lastMessage.content',
+        // 'lastMessage.createdAt'
+      ])
+      // .orderBy('lastMessage.createdAt', 'DESC', 'NULLS LAST')
+      .getMany()
   }
 
   findOne(id: number) {

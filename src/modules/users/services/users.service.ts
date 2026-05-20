@@ -9,12 +9,19 @@ import { User } from '../entities/user.entity'
 import { Not, Repository } from 'typeorm'
 import * as bcrypt from 'bcrypt'
 import { UpdateUserDto } from '../dto/update-user.dto'
+import { QueryUserDto } from '../entities/query-user.dto'
+import { UserQueryService } from './user-query.service'
+import {
+  Metadata,
+  PaginationResponse
+} from 'src/common/responses/api.pagination'
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>
+    private readonly userRepository: Repository<User>,
+    private userQueryService: UserQueryService
   ) {}
 
   async create(createUserDto: CreateUserDto) {
@@ -34,7 +41,7 @@ export class UsersService {
     const newUser = this.userRepository.create({
       email,
       username,
-      hash_password: hashPassword
+      hashPassword
     })
 
     return await this.userRepository.save(newUser)
@@ -74,7 +81,7 @@ export class UsersService {
 
     if (newPassword) {
       const salt = await bcrypt.genSalt()
-      updateData.hash_password = await bcrypt.hash(newPassword, salt)
+      updateData.hashPassword = await bcrypt.hash(newPassword, salt)
     }
 
     const updatedUser = this.userRepository.merge(user, updateData)
@@ -82,8 +89,19 @@ export class UsersService {
     return await this.userRepository.save(updatedUser)
   }
 
-  async findAll() {
-    return await this.userRepository.find()
+  async findAll(query: QueryUserDto) {
+    const { page, pageSize } = query
+    const queryList = this.userQueryService.createQueryList(query)
+    const [items, totalItems] = await queryList.getManyAndCount()
+
+    return new PaginationResponse({
+      items,
+      metadata: {
+        page,
+        pageSize,
+        totalItems
+      }
+    })
   }
 
   async findById(id: string) {

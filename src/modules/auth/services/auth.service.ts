@@ -20,7 +20,7 @@ export class AuthService {
       throw new UnauthorizedException('Email not found')
     }
 
-    const isMatch = await bcrypt.compare(password, user.hash_password)
+    const isMatch = await bcrypt.compare(password, user.hashPassword)
 
     if (!isMatch) {
       throw new UnauthorizedException('Password not match')

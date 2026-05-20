@@ -1,10 +1,13 @@
+import { Exclude } from 'class-transformer'
 import {
   Column,
   CreateDateColumn,
   Entity,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn
 } from 'typeorm'
+import { Message } from 'src/modules/messages/entities/message.entity'
 
 @Entity('users')
 export class User {
@@ -17,8 +20,9 @@ export class User {
   @Column({ type: 'varchar', length: 255, unique: true })
   email: string
 
+  @Exclude()
   @Column({ type: 'varchar', length: 255 })
-  hash_password: string
+  hashPassword: string
 
   @Column({ type: 'varchar', nullable: true })
   avatar: string
@@ -31,4 +35,7 @@ export class User {
 
   @UpdateDateColumn()
   updatedAt: Date
+
+  @OneToMany(() => Message, (message) => message.user)
+  messages: Message[]
 }
