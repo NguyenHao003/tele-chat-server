@@ -45,5 +45,5 @@ export class Message {
 
   @ManyToOne(() => User, (user) => user.messages)
   @JoinColumn({ name: 'senderId' })
-  user: User
+  sender: User
 }

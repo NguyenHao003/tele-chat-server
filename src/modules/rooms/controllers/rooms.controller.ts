@@ -22,14 +22,17 @@ export class RoomsController {
   constructor(private readonly roomsService: RoomsService) {}
 
   @Post()
-  async create(@CurrentUser() user: User, @Body() createRoomDto: CreateRoomDto) {
+  async create(
+    @CurrentUser() user: User,
+    @Body() createRoomDto: CreateRoomDto
+  ) {
     const data = await this.roomsService.create(user.id, createRoomDto)
     return new ApiResponse(data)
   }
 
   @Get()
   async findAll(@CurrentUser() user: User) {
-    const data = await this.roomsService.findAll(user.id)
+    const data = await this.roomsService.findRoomsByUserId(user.id)
     return new ApiResponse(data)
   }
 

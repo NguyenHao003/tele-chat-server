@@ -26,11 +26,14 @@ export class RoomsService {
         )
       }
 
+      const otherUserId = allMemberIds.find((id) => id !== userId)
+
       const existingRoom = await this.roomRepository
         .createQueryBuilder('room')
-        .innerJoin('room.members', 'm1')
-        .innerJoin('room.members', 'm2')
-        .where('room.type =:type', { type: RoomType.DIRECT })
+        .innerJoin('room.members', 'm1', 'm1.userId = :userId', { userId })
+        .innerJoin('room.members', 'm2', 'm2.userId = :otherUserId', {
+          otherUserId
+        })
         .where('room.type = :type', { type: RoomType.DIRECT })
         .getOne()
 
@@ -59,7 +62,7 @@ export class RoomsService {
     })
   }
 
-  async findAll(userId: string) {
+  async findRoomsByUserId(userId: string) {
     return await this.roomRepository
       .createQueryBuilder('room')
       .innerJoin(
@@ -70,11 +73,12 @@ export class RoomsService {
       )
       .leftJoinAndSelect('room.members', 'member')
       .leftJoinAndSelect('member.user', 'user')
-      // .leftJoinAndSelect(
-      //   'room.messages',
-      //   'lastMessage',
-      //   'lastMessage.id = (SELECT m.id FROM message m WHERE m.roomId = room.id ORDER BY m.createdAt DESC LIMIT 1)'
-      // )
+      .leftJoinAndMapOne(
+        'room.lastMessage',
+        'room.messages',
+        'lastMessage',
+        'lastMessage.id = (SELECT m.id FROM messages m WHERE m."roomId" = room.id ORDER BY m."createdAt" DESC LIMIT 1)'
+      )
       .select([
         'room.id',
         'room.name',
@@ -83,12 +87,13 @@ export class RoomsService {
         'member.id',
         'user.id',
         'user.username',
-        'user.avatar'
-        // 'lastMessage.id',
-        // 'lastMessage.content',
-        // 'lastMessage.createdAt'
+        'user.avatar',
+        'lastMessage.id',
+        'lastMessage.content',
+        'lastMessage.createdAt',
+        'lastMessage.type'
       ])
-      // .orderBy('lastMessage.createdAt', 'DESC', 'NULLS LAST')
+      .orderBy('lastMessage.createdAt', 'DESC', 'NULLS LAST')
       .getMany()
   }
 
