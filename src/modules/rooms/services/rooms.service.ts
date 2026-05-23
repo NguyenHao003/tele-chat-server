@@ -1,10 +1,18 @@
-import { BadRequestException, Injectable } from '@nestjs/common'
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable
+} from '@nestjs/common'
 import { CreateRoomDto } from '../dto/create-room.dto'
 import { UpdateRoomDto } from '../dto/update-room.dto'
 import { Room, RoomType } from '../entities/room.entity'
 import { InjectRepository } from '@nestjs/typeorm'
-import { Repository } from 'typeorm'
+import { In, Repository } from 'typeorm'
 import { RoomMember } from '../entities/room-member.entity'
+import {
+  AddRoomMembersDto,
+  RemoveRoomMembersDto
+} from '../dto/add-room-members.dto'
 
 @Injectable()
 export class RoomsService {
@@ -101,11 +109,139 @@ export class RoomsService {
     return `This action returns a #${id} room`
   }
 
-  update(id: number, updateRoomDto: UpdateRoomDto) {
-    return `This action updates a #${id} room`
+  async update(userId: string, roomId: string, updateRoomDto: UpdateRoomDto) {
+    const { name, avatar } = updateRoomDto
+
+    if (name === undefined && avatar === undefined) {
+      throw new BadRequestException('No room information provided.')
+    }
+
+    const room = await this.roomRepository.findOneBy({ id: roomId })
+
+    if (!room) {
+      throw new BadRequestException('Room not found')
+    }
+
+    if (room.type !== RoomType.GROUP) {
+      throw new BadRequestException('Only group rooms can be updated.')
+    }
+
+    const isMember = await this.memberRepository.findOne({
+      where: { roomId: roomId, userId }
+    })
+
+    if (!isMember) {
+      throw new ForbiddenException('You are not a member of this room.')
+    }
+
+    if (name !== undefined) {
+      const trimmedName = name.trim()
+
+      if (!trimmedName) {
+        throw new BadRequestException('Group room name is required.')
+      }
+
+      room.name = trimmedName
+    }
+
+    if (avatar !== undefined) {
+      room.avatar = avatar
+    }
+
+    return await this.roomRepository.save(room)
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} room`
+  async addRoomMembers(
+    userId: string,
+    roomId: string,
+    addRoomMembersDto: AddRoomMembersDto
+  ) {
+    const { memberIds } = addRoomMembersDto
+
+    const room = await this.roomRepository.findOneBy({ id: roomId })
+
+    if (!room) {
+      throw new BadRequestException('Room not found')
+    }
+
+    if (room.type !== RoomType.GROUP) {
+      throw new BadRequestException('Only group rooms can be added members.')
+    }
+
+    const currentMember = await this.memberRepository.findOne({
+      where: { roomId, userId }
+    })
+
+    if (!currentMember) {
+      throw new ForbiddenException('You are not a member of this room.')
+    }
+
+    const uniqueMemberIds = Array.from(new Set(memberIds))
+
+    if (!uniqueMemberIds.length) {
+      throw new BadRequestException('Must provide members to add.')
+    }
+
+    return await this.roomRepository.manager.transaction(async (manager) => {
+      const membersData = uniqueMemberIds.map((memberId) => {
+        return this.memberRepository.create({
+          room: room,
+          user: { id: memberId }
+        })
+      })
+
+      await this.memberRepository.save(membersData)
+      return room
+    })
+  }
+
+  async remove(id: string) {
+    const existingRoom = await this.roomRepository.findOneBy({ id })
+    if (!existingRoom) {
+      throw new BadRequestException('Room not found')
+    }
+
+    return await this.roomRepository.delete(id)
+  }
+
+  async removeRoomMembers(
+    userId: string,
+    roomId: string,
+    removeRoomMembersDto: RemoveRoomMembersDto
+  ) {
+    const { memberIds } = removeRoomMembersDto
+
+    const room = await this.roomRepository.findOneBy({ id: roomId })
+
+    if (!room) {
+      throw new BadRequestException('Room not found')
+    }
+
+    if (room.type !== RoomType.GROUP) {
+      throw new BadRequestException('Only group rooms can be removed members.')
+    }
+
+    const currentMember = await this.memberRepository.findOne({
+      where: { roomId, userId }
+    })
+
+    if (!currentMember) {
+      throw new ForbiddenException('You are not a member of this room.')
+    }
+
+    const uniqueMemberIds = Array.from(new Set(memberIds))
+
+    if (!uniqueMemberIds.length) {
+      throw new BadRequestException('Must provide members to remove.')
+    }
+
+    const result = await this.memberRepository.delete({
+      roomId,
+      userId: In(uniqueMemberIds)
+    })
+
+    return {
+      removedCount: result.affected ?? 0
+    }
   }
 }

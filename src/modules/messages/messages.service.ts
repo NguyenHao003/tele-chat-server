@@ -183,7 +183,15 @@ export class MessagesService {
     return `This action updates a #${id} message`
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} message`
+  async remove(id: string) {
+    const result = await this.messageRepository.delete({ id })
+
+    if (result.affected === 0) {
+      throw new BadRequestException('Message not found')
+    }
+
+    return {
+      removedCount: result.affected
+    }
   }
 }

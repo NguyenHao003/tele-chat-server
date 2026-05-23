@@ -49,11 +49,15 @@ export class MessagesController {
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateMessageDto: UpdateMessageDto) {
-    return this.messagesService.update(+id, updateMessageDto)
+    const result = this.messagesService.update(+id, updateMessageDto)
+
+    return new ApiResponse(result, 'Message updated successfully')
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.messagesService.remove(+id)
+    const result = this.messagesService.remove(id)
+
+    return new ApiResponse(result, 'Message deleted successfully')
   }
 }
