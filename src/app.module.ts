@@ -6,6 +6,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { RoomsModule } from './modules/rooms/rooms.module';
 import { MessagesModule } from './modules/messages/messages.module';
 import { SearchModule } from './modules/search/search.module';
+import { ChatModule } from './modules/chat/chat.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { SearchModule } from './modules/search/search.module';
     RoomsModule,
     MessagesModule,
     SearchModule,
+    ChatModule,
   ],
 })
 export class AppModule {}
