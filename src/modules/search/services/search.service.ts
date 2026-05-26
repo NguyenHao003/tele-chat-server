@@ -39,9 +39,13 @@ export class SearchService {
         'lastMessage',
         'lastMessage.id = (SELECT m.id FROM messages m WHERE m."roomId" = room.id ORDER BY m."createdAt" DESC LIMIT 1)'
       )
-      .where('(room.name LIKE :keyword OR user.username LIKE :keyword)', {
-        keyword: `%${keyword || ''}%`
-      })
+      .where(
+        '(room.name ILIKE :keyword OR (user.id != :userId AND (user.username ILIKE :keyword OR user.email ILIKE :keyword)))',
+        {
+          userId,
+          keyword: `%${keyword || ''}%`
+        }
+      )
       .select([
         'room.id',
         'room.name',
@@ -52,6 +56,7 @@ export class SearchService {
         'member.userId',
         'user.id',
         'user.username',
+        'user.email',
         'user.avatar',
         'user.isOnline',
         'lastMessage.id',
@@ -80,6 +85,7 @@ export class SearchService {
           ? {
               id: otherMember?.user?.id,
               username: otherMember?.user?.username,
+              email: otherMember?.user?.email,
               avatar: otherMember?.user?.avatar,
               isOnline: otherMember?.user?.isOnline
             }
@@ -107,10 +113,16 @@ export class SearchService {
     const userQuery = await this.userRepository
       .createQueryBuilder('user')
       .where('user.id != :userId', { userId })
-      .andWhere('user.username LIKE :keyword', {
+      .andWhere('(user.username ILIKE :keyword OR user.email ILIKE :keyword)', {
         keyword: `%${keyword || ''}%`
       })
-      .select(['user.id', 'user.username', 'user.avatar', 'user.isOnline'])
+      .select([
+        'user.id',
+        'user.username',
+        'user.email',
+        'user.avatar',
+        'user.isOnline'
+      ])
 
     if (existingDirectUserIds.length > 0) {
       userQuery.andWhere('user.id NOT IN (:...existingDirectUserIds)', {
@@ -129,6 +141,7 @@ export class SearchService {
       targetUser: {
         id: user.id,
         username: user.username,
+        email: user.email,
         avatar: user.avatar,
         isOnline: user.isOnline
       },
