@@ -133,6 +133,17 @@ export class MessagesService {
     return `This action returns all messages`
   }
 
+  async findMemberIdsByRoomId(roomId: string) {
+    const members = await this.memberRepository.find({
+      where: { roomId },
+      select: {
+        userId: true
+      }
+    })
+
+    return members.map((member) => member.userId)
+  }
+
   async findMessagesInRoom(
     roomId: string,
     userId: string,

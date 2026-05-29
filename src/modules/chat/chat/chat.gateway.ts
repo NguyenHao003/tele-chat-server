@@ -1,4 +1,6 @@
 import { UseGuards } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
+import { JwtService } from '@nestjs/jwt'
 import {
   ConnectedSocket,
   MessageBody,
@@ -12,6 +14,7 @@ import { Server, Socket } from 'socket.io'
 import { WsJwtGuard } from 'src/modules/auth/guards/ws-jwt.guard'
 import { MessageType } from 'src/modules/messages/entities/message.entity'
 import { MessagesService } from 'src/modules/messages/messages.service'
+import { UsersService } from 'src/modules/users/services/users.service'
 
 @WebSocketGateway({
   cors: { origin: '*' }
@@ -21,11 +24,43 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server
 
-  constructor(private readonly messageService: MessagesService) {}
+  constructor(
+    private readonly messageService: MessagesService,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
+    private readonly usersService: UsersService
+  ) {}
 
-  handleConnection(client: Socket, ...args: any[]) {
-    console.log('Connected:', client.id)
+  async handleConnection(client: Socket) {
+    try {
+      const token =
+        client.handshake.auth.token || (client.handshake.query?.token as string)
+
+      if (!token) {
+        client.disconnect()
+        return
+      }
+
+      const payload = await this.jwtService.verifyAsync(token, {
+        secret: this.configService.get<string>('JWT_SECRET')
+      })
+
+      const user = await this.usersService.findByEmail(payload.email)
+
+      if (!user) {
+        client.disconnect()
+        return
+      }
+
+      client.data.user = user
+      client.join(`user:${user.id}`)
+
+      console.log('Connected:', client.id, 'user:', user.id)
+    } catch {
+      client.disconnect()
+    }
   }
+
   handleDisconnect(client: Socket) {
     console.log('Disconnect:', client.id)
   }
@@ -36,6 +71,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { roomId: string }
   ) {
+    const user = client.data.user
+    client.join(`user:${user.id}`)
     client.join(data.roomId)
     client.emit('joinedRoom', { roomId: data.roomId })
   }
@@ -55,6 +92,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     })
 
     this.server.to(data.roomId).emit('messageCreated', message)
+
+    const memberIds = await this.messageService.findMemberIdsByRoomId(
+      data.roomId
+    )
+
+    for (const memberId of memberIds) {
+      this.server.to(`user:${memberId}`).emit('roomUpdated', message)
+    }
   }
 
   // Gửi tin nhắn trực tiếp cho user (tự tạo room nếu chưa có)
