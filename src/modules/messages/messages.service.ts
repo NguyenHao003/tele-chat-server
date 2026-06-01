@@ -190,6 +190,19 @@ export class MessagesService {
     })
   }
 
+  async findContactIdsByUserId(userId: string) {
+    const rooms = await this.roomRepository.find({
+      where: { type: RoomType.DIRECT, members: { userId } },
+      relations: ['members']
+    })
+
+    return rooms.flatMap((room) =>
+      room.members
+        .filter((member) => member.userId !== userId)
+        .map((member) => member.userId)
+    )
+  }
+
   update(id: number, updateMessageDto: UpdateMessageDto) {
     return `This action updates a #${id} message`
   }

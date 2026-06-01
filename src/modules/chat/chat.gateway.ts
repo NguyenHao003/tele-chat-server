@@ -24,6 +24,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server
 
+  private readonly onlineUsers = new Map<string, Set<string>>()
+
   constructor(
     private readonly messageService: MessagesService,
     private readonly jwtService: JwtService,
@@ -55,14 +57,38 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.data.user = user
       client.join(`user:${user.id}`)
 
+      const sockets = this.onlineUsers.get(user.id) || new Set<string>()
+      const wasOffline = sockets.size === 0
+
+      sockets.add(client.id)
+      this.onlineUsers.set(user.id, sockets)
+
+      if (wasOffline) {
+        await this.notifyContacts(user.id, true)
+      }
+
       console.log('Connected:', client.id, 'user:', user.id)
     } catch {
       client.disconnect()
     }
   }
 
-  handleDisconnect(client: Socket) {
-    console.log('Disconnect:', client.id)
+  async handleDisconnect(client: Socket) {
+    const userId = client.data.user?.id
+
+    if (!userId) return
+
+    const normalizedUserId = String(userId)
+    const sockets = this.onlineUsers.get(normalizedUserId)
+
+    if (!sockets) return
+
+    sockets.delete(client.id)
+
+    if (sockets.size === 0) {
+      this.onlineUsers.delete(normalizedUserId)
+      await this.notifyContacts(normalizedUserId, false)
+    }
   }
 
   @UseGuards(WsJwtGuard)
@@ -124,5 +150,32 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // Emit cho người nhận nếu đang online
     // (sau này sẽ xử lý qua Redis, tạm thời dùng cách này)
     this.server.to(`user:${data.receiverId}`).emit('newMessage', message)
+  }
+
+  private async notifyContacts(userId: string, isOnline: boolean) {
+    const contactIds = await this.messageService.findContactIdsByUserId(userId)
+
+    for (const contactId of contactIds) {
+      this.server.to(`user:${contactId}`).emit('contactUpdated', {
+        userId,
+        isOnline,
+        lastSeenAt: isOnline ? null : new Date().toISOString()
+      })
+    }
+  }
+
+  @UseGuards(WsJwtGuard)
+  @SubscribeMessage('getContactStatuses')
+  async handleGetContactStatuses(@ConnectedSocket() client: Socket) {
+    const userId = String(client.data.user.id)
+
+    const contactIds = await this.messageService.findContactIdsByUserId(userId)
+
+    const statuses = contactIds.map((contactId) => ({
+      userId: contactId,
+      isOnline: this.onlineUsers.has(String(contactId))
+    }))
+
+    client.emit('contactStatuses', statuses)
   }
 }
