@@ -96,6 +96,7 @@ export class RoomsService {
         'user.id',
         'user.username',
         'user.avatar',
+        'user.isOnline',
         'lastMessage.id',
         'lastMessage.content',
         'lastMessage.createdAt',

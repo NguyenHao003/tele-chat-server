@@ -89,6 +89,10 @@ export class UsersService {
     return await this.userRepository.save(updatedUser)
   }
 
+  async updateStatus(id: string, isOnline: boolean) {
+    return await this.userRepository.update(id, { isOnline })
+  }
+
   async findAll(query: QueryUserDto) {
     const { page, pageSize } = query
     const queryList = this.userQueryService.createQueryList(query)

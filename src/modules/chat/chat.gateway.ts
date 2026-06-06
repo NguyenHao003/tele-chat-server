@@ -64,6 +64,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.onlineUsers.set(user.id, sockets)
 
       if (wasOffline) {
+        await this.usersService.updateStatus(user.id, true)
         await this.notifyContacts(user.id, true)
       }
 
@@ -87,6 +88,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     if (sockets.size === 0) {
       this.onlineUsers.delete(normalizedUserId)
+      await this.usersService.updateStatus(normalizedUserId, false)
       await this.notifyContacts(normalizedUserId, false)
     }
   }
