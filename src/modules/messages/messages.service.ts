@@ -1,7 +1,8 @@
 import {
   BadRequestException,
   ForbiddenException,
-  Injectable
+  Injectable,
+  NotFoundException
 } from '@nestjs/common'
 import { CreateMessageDto } from './dto/create-message.dto'
 import { UpdateMessageDto } from './dto/update-message.dto'
@@ -203,8 +204,16 @@ export class MessagesService {
     )
   }
 
-  update(id: number, updateMessageDto: UpdateMessageDto) {
-    return `This action updates a #${id} message`
+  async update(id: string, updateMessageDto: UpdateMessageDto) {
+    const { content } = updateMessageDto
+    const message = await this.messageRepository.findOne({ where: { id } })
+
+    if (!message) {
+      throw new NotFoundException('Message not found')
+    }
+
+    message.content = content
+    return await this.messageRepository.save(message)
   }
 
   async remove(id: string) {

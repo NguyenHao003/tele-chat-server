@@ -131,4 +131,8 @@ export class UsersService {
 
     return user
   }
+
+  async updateOnlineStatus(id: string, isOnline: boolean) {
+    await this.userRepository.update(id, { isOnline })
+  }
 }

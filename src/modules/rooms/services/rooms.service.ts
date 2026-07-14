@@ -1,7 +1,8 @@
 import {
   BadRequestException,
   ForbiddenException,
-  Injectable
+  Injectable,
+  NotFoundException
 } from '@nestjs/common'
 import { CreateRoomDto } from '../dto/create-room.dto'
 import { UpdateRoomDto } from '../dto/update-room.dto'
@@ -55,17 +56,17 @@ export class RoomsService {
     }
 
     return await this.roomRepository.manager.transaction(async (manager) => {
-      const newRoom = this.roomRepository.create({ type, name })
-      const savedRoom = await this.roomRepository.save(newRoom)
+      const newRoom = manager.create(Room, { type, name })
+      const savedRoom = await manager.save(Room, newRoom)
 
       const membersData = allMemberIds.map((memberId) => {
-        return this.memberRepository.create({
+        return manager.create(RoomMember, {
           room: savedRoom,
           user: { id: memberId }
         })
       })
 
-      await this.memberRepository.save(membersData)
+      await manager.save(RoomMember, membersData)
       return savedRoom
     })
   }
@@ -106,8 +107,17 @@ export class RoomsService {
       .getMany()
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} room`
+  async findOne(id: string) {
+    const room = await this.roomRepository.findOne({
+      where: { id },
+      relations: ['members', 'members.user']
+    })
+
+    if (!room) {
+      throw new NotFoundException('Room not found')
+    }
+
+    return room
   }
 
   async update(userId: string, roomId: string, updateRoomDto: UpdateRoomDto) {
@@ -185,13 +195,13 @@ export class RoomsService {
 
     return await this.roomRepository.manager.transaction(async (manager) => {
       const membersData = uniqueMemberIds.map((memberId) => {
-        return this.memberRepository.create({
+        return manager.create(RoomMember, {
           room: room,
           user: { id: memberId }
         })
       })
 
-      await this.memberRepository.save(membersData)
+      await manager.save(RoomMember, membersData)
       return room
     })
   }

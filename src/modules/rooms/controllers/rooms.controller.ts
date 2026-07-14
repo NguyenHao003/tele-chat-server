@@ -20,6 +20,9 @@ import {
   RemoveRoomMembersDto
 } from '../dto/add-room-members.dto'
 
+import { ApiTags } from '@nestjs/swagger'
+
+@ApiTags('Rooms')
 @Controller('rooms')
 @UseGuards(JwtAuthGuard)
 export class RoomsController {
@@ -42,7 +45,7 @@ export class RoomsController {
 
   @Get(':id')
   async findOne(@Param('id') id: string) {
-    const data = await this.roomsService.findOne(+id)
+    const data = await this.roomsService.findOne(id)
     return new ApiResponse(data, 'Get room successfully')
   }
 

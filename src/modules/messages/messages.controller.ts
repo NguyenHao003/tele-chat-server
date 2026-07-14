@@ -18,6 +18,9 @@ import { BaseQueryDto } from 'src/common/dtos/base-query.dto'
 import { ApiResponse } from 'src/common/responses/api.response'
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard'
 
+import { ApiTags } from '@nestjs/swagger'
+
+@ApiTags('Messages')
 @Controller('messages')
 @UseGuards(JwtAuthGuard)
 export class MessagesController {
@@ -48,8 +51,8 @@ export class MessagesController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateMessageDto: UpdateMessageDto) {
-    const result = this.messagesService.update(+id, updateMessageDto)
+  async update(@Param('id') id: string, @Body() updateMessageDto: UpdateMessageDto) {
+    const result = await this.messagesService.update(id, updateMessageDto)
 
     return new ApiResponse(result, 'Message updated successfully')
   }

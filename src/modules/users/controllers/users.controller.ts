@@ -13,6 +13,9 @@ import { ApiResponse } from 'src/common/responses/api.response'
 import { QueryUserDto } from '../entities/query-user.dto'
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard'
 
+import { ApiTags } from '@nestjs/swagger'
+
+@ApiTags('Users')
 @UseGuards(JwtAuthGuard)
 @Controller('users')
 export class UsersController {

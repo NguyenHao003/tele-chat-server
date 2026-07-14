@@ -6,6 +6,9 @@ import { User } from 'src/modules/users/entities/user.entity'
 import { BaseQueryDto } from 'src/common/dtos/base-query.dto'
 import { ApiResponse } from 'src/common/responses/api.response'
 
+import { ApiTags } from '@nestjs/swagger'
+
+@ApiTags('Search')
 @UseGuards(JwtAuthGuard)
 @Controller('search')
 export class SearchController {

@@ -1,6 +1,7 @@
 import { NestFactory, Reflector } from '@nestjs/core'
 import { AppModule } from './app.module'
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common'
+import { setupSwagger } from './common/config/swagger.config'
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
@@ -16,6 +17,9 @@ async function bootstrap() {
     origin: '*'
   })
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)))
+
+  setupSwagger(app)
+
   await app.listen(process.env.PORT ?? 3000)
   console.log(`Application is running on: ${process.env.PORT}`)
 }
