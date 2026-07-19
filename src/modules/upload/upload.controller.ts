@@ -4,6 +4,8 @@ import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 import { ApiResponse } from 'src/common/responses/api.response';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PresignedUrlDto } from './dto/presined-url.dto';
+import { ConfirmUploadDto } from './dto/confirm-upload.dto';
+import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiCreatedResponse } from '@nestjs/swagger';
 
 @ApiTags('Upload')
@@ -40,13 +42,32 @@ export class UploadController {
   @Post('presigned-url')
   @ApiOperation({ summary: 'Lấy liên kết Presigned URL để client tự upload trực tiếp lên R2' })
   @ApiCreatedResponse({ description: 'Khởi tạo Presigned URL thành công' })
-  async getPresignedUrl(@Body() presignedUrlDto: PresignedUrlDto) {
+  async getPresignedUrl(
+    @Body() presignedUrlDto: PresignedUrlDto,
+    @CurrentUser('id') userId: string,
+  ) {
     const data = await this.uploadService.getPresignedUrl(
       presignedUrlDto.fileName,
-      presignedUrlDto.fileType,
+      presignedUrlDto.mimeType,
+      presignedUrlDto.size,
       presignedUrlDto.folder,
+      userId,
     );
     return new ApiResponse(data, 'Presigned URL generated successfully');
+  }
+
+  @Post('confirm')
+  @ApiOperation({ summary: 'Xác nhận tải tệp lên thành công và cập nhật trạng thái sử dụng' })
+  @ApiCreatedResponse({ description: 'Xác nhận trạng thái upload file thành công' })
+  async confirmUpload(
+    @Body() confirmUploadDto: ConfirmUploadDto,
+    @CurrentUser('id') userId: string,
+  ) {
+    const data = await this.uploadService.confirmUpload(
+      confirmUploadDto.fileId,
+      userId,
+    );
+    return new ApiResponse(data, 'File upload confirmed successfully');
   }
 
   @Delete()
@@ -60,12 +81,12 @@ export class UploadController {
   }
 
   @Get('private-url')
-@ApiOperation({ summary: 'Lấy liên kết đọc (GET) cho file private' })
-async getPrivateUrl(@Query('key') key: string) {
-  if (!key) {
-    throw new BadRequestException('key query parameter is required');
+  @ApiOperation({ summary: 'Lấy liên kết đọc (GET) cho file private' })
+  async getPrivateUrl(@Query('key') key: string) {
+    if (!key) {
+      throw new BadRequestException('key query parameter is required');
+    }
+    const data = await this.uploadService.getPrivateFileUrl(key);
+    return new ApiResponse(data, 'Private read URL generated successfully');
   }
-  const data = await this.uploadService.getPrivateFileUrl(key);
-  return new ApiResponse(data, 'Private read URL generated successfully');
-}
 }

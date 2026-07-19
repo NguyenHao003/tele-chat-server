@@ -1,19 +1,24 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class PresignedUrlDto {
   @ApiProperty({ description: 'Tên tệp tin gốc', example: 'photo.jpg' })
   @IsString()
   @IsNotEmpty()
-  fileName: string; // Tên file, ví dụ: "photo.jpg"
+  fileName: string;
 
   @ApiProperty({ description: 'Định dạng MIME của tệp tin', example: 'image/jpeg' })
   @IsString()
   @IsNotEmpty()
-  fileType: string; // Định dạng MIME, ví dụ: "image/jpeg"
+  mimeType: string;
 
-  @ApiProperty({ description: 'Thư mục lưu trữ trên Cloudflare R2', example: 'chat-attachments', required: false })
+  @ApiProperty({ description: 'Kích thước tệp tin (bytes)', example: 102456 })
+  @IsNumber()
+  @IsNotEmpty()
+  size: number;
+
+  @ApiProperty({ description: 'Thư mục lưu trữ trên Cloudflare R2', example: 'chat-attachments' })
   @IsString()
-  @IsOptional()   
-  folder?: string;
+  @IsNotEmpty()
+  folder: string;
 }

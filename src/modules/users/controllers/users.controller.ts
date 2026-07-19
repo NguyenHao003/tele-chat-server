@@ -12,8 +12,10 @@ import { UpdateUserDto } from '../dto/update-user.dto'
 import { ApiResponse } from 'src/common/responses/api.response'
 import { QueryUserDto } from '../entities/query-user.dto'
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard'
+import { CurrentUser } from 'src/common/decorators/current-user.decorator'
+import { User } from '../entities/user.entity'
 
-import { ApiTags } from '@nestjs/swagger'
+import { ApiTags, ApiOperation } from '@nestjs/swagger'
 
 @ApiTags('Users')
 @UseGuards(JwtAuthGuard)
@@ -25,6 +27,18 @@ export class UsersController {
   async findAll(@Query() query: QueryUserDto) {
     const data = await this.usersService.findAll(query)
     return new ApiResponse(data, 'Users retrieved successfully')
+  }
+
+  @Get('me')
+  @ApiOperation({ summary: 'Lấy thông tin tài khoản hiện tại của người dùng đang đăng nhập' })
+  async getMe(@CurrentUser() user: User) {
+    return new ApiResponse(user, 'User profile retrieved successfully')
+  }
+
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    const user = await this.usersService.findById(id)
+    return new ApiResponse(user, 'User retrieved successfully')
   }
 
   @Patch(':id')
